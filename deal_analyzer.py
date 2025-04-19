@@ -47,7 +47,7 @@ def analyze_deal(purchase_price, down_payment_pct, rents, interest_rate, impound
 st.title("Multifamily Deal Analyzer")
 
 st.sidebar.header("Input Parameters")
-purchase_price = st.sidebar.number_input("Purchase Price ($)", value=400000, step=10000)
+purchase_price = st.sidebar.number_input("Purchase Price ($)", value=1000000, step=10000)
 down_payment_pct = st.sidebar.slider("Down Payment %", min_value=0.1, max_value=0.5, value=0.25, step=0.01)
 interest_rate = st.sidebar.slider("Interest Rate (%)", min_value=0.03, max_value=0.09, value=0.055, step=0.001)
 impounds = st.sidebar.checkbox("Include Impounds (Taxes & Insurance)", value=True)

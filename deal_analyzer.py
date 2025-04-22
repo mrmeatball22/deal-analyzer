@@ -183,3 +183,4 @@ if rent_growth_enabled and results['Projections']:
     ax1.set_title("10-Year Projection: Cash Flow & DSCR")
     fig.tight_layout()
     st.pyplot(fig)
+# Trigger Streamlit redeploy

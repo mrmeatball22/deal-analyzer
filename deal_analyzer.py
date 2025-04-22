@@ -1,4 +1,4 @@
-# AJVRE Multifamily Deal Analyzer v2.2
+# AJVRE Multifamily Deal Analyzer v2.2.1 (Fixed for Streamlit Cloud)
 import streamlit as st
 from math import pow
 import pandas as pd
@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="AJVRE Analyzer", layout="wide")
 
-# -------------------- LOAN PRODUCT CONFIG -------------------- #
 LOAN_PRODUCTS = {
     "30-Year Fixed": {"term": 30, "io": False},
     "10/1 ARM": {"term": 30, "io": False},
@@ -14,7 +13,6 @@ LOAN_PRODUCTS = {
     "5/1 I/O": {"term": 30, "io": True},
 }
 
-# -------------------- ANALYSIS FUNCTION -------------------- #
 def analyze_deal(
     purchase_price,
     down_payment_pct,
@@ -36,18 +34,15 @@ def analyze_deal(
     loan_term_years = loan_info["term"]
     use_interest_only = loan_info["io"]
 
-    # Apply selected rents
     applied_rents = market_rents if use_market_rents else rents
     gross_rent_annual = sum(applied_rents) * 12
     vacancy_loss = gross_rent_annual * vacancy_rate
     gross_operating_income = gross_rent_annual - vacancy_loss
 
-    # Expenses
     base_expenses = gross_operating_income * expense_ratio
     if mgmt_override:
         base_expenses += gross_operating_income * 0.08
 
-    # Financing
     loan_amount = purchase_price * (1 - down_payment_pct)
     monthly_interest_rate = interest_rate / 12
     num_payments = loan_term_years * 12
@@ -59,7 +54,6 @@ def analyze_deal(
 
     annual_pi = monthly_pi * 12
 
-    # Results
     noi = gross_operating_income - base_expenses
     dscr = noi / annual_pi if annual_pi else 0
     cash_invested = purchase_price * down_payment_pct + (renovation_cost_per_unit * units) + capex_total
@@ -71,7 +65,6 @@ def analyze_deal(
     total_roi = (annual_cash_flow + principal_paydown) / cash_invested if cash_invested else 0
     breakeven_rent = (annual_pi + base_expenses) / (units * 12) if units else 0
 
-    # Projection Over Time
     projections = []
     if rent_growth_enabled:
         current_rent = sum(applied_rents)
@@ -101,25 +94,20 @@ def analyze_deal(
         "Projections": projections
     }
 
-# -------------------- STREAMLIT UI -------------------- #
-st.title("🏘 AJVRE Multifamily Deal Analyzer v2.2")
+# Streamlit UI
+st.title("🏘 AJVRE Multifamily Deal Analyzer v2.2.1")
 
 st.sidebar.header("📋 Deal Inputs")
 purchase_price = st.sidebar.number_input("Purchase Price ($)", value=1000000, step=50000)
 
-# Down Payment Inputs
 st.sidebar.subheader("💰 Down Payment")
 down_payment_pct = st.sidebar.number_input("Down Payment %", min_value=0.0, max_value=1.0, value=0.25, step=0.01)
 down_payment_dollars = purchase_price * down_payment_pct
 st.sidebar.write(f"Down Payment Amount: ${down_payment_dollars:,.0f}")
 
-# Interest Rate
 interest_rate = st.sidebar.number_input("Interest Rate (%)", value=5.5, step=0.01) / 100
-
-# Loan Product
 loan_product = st.sidebar.selectbox("Loan Product", list(LOAN_PRODUCTS.keys()))
 
-# Units and Rents
 st.sidebar.header("🏢 Income & Units")
 num_units = st.sidebar.number_input("Number of Units", min_value=1, max_value=50, value=4)
 use_market_rents = st.sidebar.radio("Use Current or Market Rents?", ["Current", "Market"], index=0) == "Market"
@@ -133,25 +121,21 @@ for i in range(int(num_units)):
     with col2:
         market_rents.append(st.number_input(f"Market Rent", value=1800, step=50, key=f"market_rent_{i}"))
 
-# Expenses
 st.sidebar.header("💸 Expenses")
 expense_ratio = st.sidebar.slider("Base Operating Expense Ratio", 0.2, 0.6, 0.3, step=0.01)
 vacancy_rate = st.sidebar.slider("Vacancy Rate", 0.0, 0.1, 0.03, step=0.01)
 mgmt_override = st.sidebar.checkbox("Add 8% Management Fee?", False)
 
-# Reno / CapEx
 st.sidebar.header("🔧 Renovation & CapEx")
 renovation_cost_per_unit = st.sidebar.number_input("Renovation Cost Per Unit ($)", value=10000, step=1000)
 capex_total = st.sidebar.number_input("Total Property CapEx ($)", value=15000, step=5000)
 
-# Rent Growth Toggle
 st.sidebar.header("📈 Rent Growth")
 rent_growth_enabled = st.sidebar.checkbox("Enable Annual Rent Increase?", value=False)
 annual_rent_increase_pct = 0.03
 if rent_growth_enabled:
     annual_rent_increase_pct = st.sidebar.number_input("Annual Rent Increase %", value=3.0, step=0.25) / 100
 
-# Calculate
 results = analyze_deal(
     purchase_price,
     down_payment_pct,
@@ -169,11 +153,10 @@ results = analyze_deal(
     annual_rent_increase_pct
 )
 
-# Output
 st.header("📊 Results")
 col1, col2, col3 = st.columns(3)
 col1.metric("Net Operating Income (NOI)", f"${results['NOI']:,.0f}")
-col2.metric("DSCR", f"{results['DSCR']:.2f}", delta=None)
+col2.metric("DSCR", f"{results['DSCR']:.2f}")
 col3.metric("Cash Flow (Annual)", f"${results['Annual Cash Flow']:,.0f}")
 
 col4, col5, col6 = st.columns(3)
@@ -187,17 +170,16 @@ st.write(f"**Monthly Payment (P&I Only):** ${results['Monthly P&I Only']:,.0f}")
 st.write(f"**Principal Paydown (Annual):** ${results['Principal Paydown']:,.0f}")
 st.write(f"**Required Avg Rent/Unit to Break Even:** ${results['Breakeven Rent/Unit']:,.0f}")
 
-# Profitability Graph
 if rent_growth_enabled and results['Projections']:
-    df = pd.DataFrame(results['Projections'])
     st.subheader("📈 Profitability Over Time")
+    df = pd.DataFrame(results['Projections'])
     fig, ax1 = plt.subplots()
-    ax1.set_title("10-Year Projection: Cash Flow and DSCR")
+    ax1.plot(df['Year'], df['Cash Flow'], label='Cash Flow ($)', color='blue', marker='o')
     ax1.set_xlabel("Year")
-    ax1.plot(df['Year'], df['Cash Flow'], label='Cash Flow', marker='o')
     ax1.set_ylabel("Cash Flow ($)", color='blue')
     ax2 = ax1.twinx()
     ax2.plot(df['Year'], df['DSCR'], label='DSCR', color='green', marker='x')
     ax2.set_ylabel("DSCR", color='green')
+    ax1.set_title("10-Year Projection: Cash Flow & DSCR")
     fig.tight_layout()
     st.pyplot(fig)
